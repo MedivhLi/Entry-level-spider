@@ -1,0 +1,111 @@
+from selenium import webdriver
+import time
+import requests
+import json
+import frozen_dir
+from selenium.webdriver.chrome.options import Options
+import numpy as np
+
+#整体思路是用selenium先获得对应页面的cookie 然后再借用此cookie爬取所需内容
+#说明：这里不全部用selenium，因为感觉那是自动化的内容
+
+#我们这里用谷歌浏览器爬取页面 所以您需要下载对应的chromedriver 下面是我的chromedriver路径
+chrome_driver='/Users/litianhao/Desktop/学习/python/教务处/chromedriver' 
+
+def main(yhm,mm):
+    chrome_options = Options()#这里采用chrome无头浏览器
+    chrome_options.add_argument('--headless')
+    driver= webdriver.Chrome(options=chrome_options,executable_path=chrome_driver)
+    driver.get('http://xuanke.cufe.edu.cn/jwglxt/xtgl/login_slogin.html')
+    time.sleep(2）#这里是害怕由于网速或者其他原因在页面卡了一下（如果对自己电脑很自信可以忽略此步骤）
+    
+    name=driver.find_element_by_xpath('//*[@id="yhm"]')
+    name.clear()
+    name.send_keys(yhm)
+
+    password=driver.find_element_by_xpath('//*[@id="mm"]')
+    password.clear()
+    password.send_keys(mm)
+
+    js2 = "var q=document.getElementById('dl').click()"
+    driver.execute_script(js2)
+    time.sleep(1)#这里与前文同理可得
+
+    
+    driver.refresh()
+    c = driver.get_cookies()
+
+    cookies = {}
+    for cookie in c:
+        cookies[cookie['name']] = cookie['value']
+ 
+    cookie='JSESSIONID'+'='+cookies['JSESSIONID']+';'+'sto-id-20480'+'='+cookies['sto-id-20480']#通过分析cookie格式
+    driver.quit()
+
+    params={'doType': 'query','gnmkdm': 'N305005'}
+    data={
+         'MIME 类型':' application/x-www-form-urlencoded;charset=utf-8',
+         'xnm':'',
+         'xqm':'',
+         '_search': 'false',
+         'queryModel.showCount': 5000,
+         'queryModel.currentPage': 1,
+         'queryModel.sortName': '',
+         'queryModel.sortOrder': 'asc',
+         'time': 3
+          }
+    
+
+    headers={
+             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.2 Safari/605.1.15',
+             'Cookie': cookie
+              }
+
+    r=requests.post('http://xuanke.cufe.edu.cn/jwglxt/cjcx/cjcx_cxDgXscj.html?gnmkdm=N305005&layout=default&su='+yhm,headers=headers,data=data,params=params)
+    
+   
+    items=json.loads(r.text)['items']
+    s=0
+    a=0
+    b=0
+    scores=[]
+    subjects=[]
+    numbers1=[]
+    numbers2=[]
+    xn=[]
+    xq=[]
+    titles=[]
+
+    for item in items:
+        score=item['cj']
+        subject=item['kcmc']
+        number1=item['jd']
+        number2=item['xf']
+        xm=item['xm']
+        print({'学科':subject , '分数':score , '学分':number2 , '绩点':number1})
+        if score !='P' :
+            xn.append(item['xnmmc'])
+            xq.append(item['xqmmc'])
+            scores.append(score)
+            subjects.append(subject)
+            numbers1.append(number1)
+            numbers2.append(number2)
+    numbers2=[float(i) for i in numbers2]
+    numbers1=[float(i) for i in numbers1]
+    scores=[float(i) for i in scores]
+    
+    
+    s=sum(np.array(numbers1)*np.array(numbers2)/sum(np.array(numbers2)))
+    a=sum(np.array(scores)*np.array(numbers2)/sum(np.array(numbers2)))
+    
+
+
+    print('')
+    print('欢迎您，{},您的平均绩点为{},平均成绩为{}'.format(xm,s,a))
+    
+   
+#没办法了兄弟们 我只能把我的一个兄弟的账号密码贡献出来了（大家不要乱搞好吧） 什么是大公无私 这就是
+name=2018311150
+password='LthAystLcx0'
+calculate(yhm=name,mm=password)
+
